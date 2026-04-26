@@ -14,6 +14,7 @@ const app = express();
 
 // Middleware
 // Restricted CORS Configuration
+// Restricted CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/['"]/g, '')) 
     : [];
@@ -30,6 +31,13 @@ app.use(cors({
     },
     credentials: true,
 }));
+
+// Security Headers for Firebase Auth
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 
 // Basic Route
