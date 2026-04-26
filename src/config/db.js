@@ -1,13 +1,12 @@
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const path = require('path');
-
-// Load environment variables from .env.local
-dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 
 const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI);
+        const uri = process.env.MONGODB_URI;
+        if (!uri) {
+            throw new Error("MongoDB connection string is missing in environment variables. Check .env.local");
+        }
+        const conn = await mongoose.connect(uri);
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error: ${error.message}`);
