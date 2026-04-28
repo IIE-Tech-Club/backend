@@ -63,7 +63,7 @@ const hackathonSchema = new mongoose.Schema({
         fields: [{
             id: { type: String, required: true },
             label: { type: String, required: true },
-            type: { type: String, enum: ['text', 'email', 'tel', 'url', 'textarea', 'select', 'checkbox', 'radio', 'number', 'date', 'file'], required: true },
+            type: { type: String, enum: ['text', 'email', 'tel', 'url', 'textarea', 'select', 'checkbox', 'radio', 'number', 'date', 'file', 'content'], required: true },
             required: { type: Boolean, default: true },
             options: [String]
         }]

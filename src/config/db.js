@@ -6,7 +6,9 @@ const connectDB = async () => {
         if (!uri) {
             throw new Error("MongoDB connection string is missing in environment variables. Check .env.local");
         }
-        const conn = await mongoose.connect(uri);
+        const conn = await mongoose.connect(uri, {
+            dbName: 'codecraft'
+        });
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error: ${error.message}`);

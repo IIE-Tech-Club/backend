@@ -43,6 +43,26 @@ const userSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'Other', 'Prefer not to say'],
+    },
+    year: {
+        type: String,
+        enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Other'],
+    },
+    branch: {
+        type: String
+    },
+    collegeName: {
+        type: String
+    },
+    bio: {
+        type: String
+    },
+    phone: {
+        type: String
     }
 });
 

@@ -56,6 +56,7 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/hackathons", require("./routes/hackathonRoutes"));
 app.use("/api/registrations", require("./routes/registrationRoutes"));
+app.use("/api/invitations", require("./routes/invitationRoutes"));
 
 // Error Middleware
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
