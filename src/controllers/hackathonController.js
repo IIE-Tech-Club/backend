@@ -119,16 +119,16 @@ const updateHackathon = async (req, res) => {
 };
 
 // @desc    Delete a hackathon
-// @route   DELETE /api/hackathons/:id
 const deleteHackathon = async (req, res) => {
     try {
         const { creatorId } = req.query;
+        const hackathonId = req.params.id;
         
         if (!creatorId) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const hackathon = await Hackathon.findOne({ id: req.params.id });
+        const hackathon = await Hackathon.findOne({ id: hackathonId });
         
         if (!hackathon) {
             return res.status(404).json({ message: 'Hackathon not found' });
@@ -138,45 +138,45 @@ const deleteHackathon = async (req, res) => {
             return res.status(403).json({ message: 'Only the creator can delete this hackathon' });
         }
 
-        const Registration = require('../models/Registration');
-        const registrations = await Registration.find({ hackathonId: req.params.id });
-        
-        // 1. Identify and delete Cloudinary assets
-        const publicIds = [];
-        registrations.forEach(reg => {
-            if (reg.responses) {
-                // Responses is a Map in the model
-                reg.responses.forEach((phaseData) => {
-                    if (typeof phaseData === 'string' && phaseData.includes('res.cloudinary.com')) {
-                        const pid = extractPublicId(phaseData);
-                        if (pid) publicIds.push(pid);
-                    } else if (typeof phaseData === 'object' && phaseData !== null) {
-                        Object.values(phaseData).forEach(val => {
-                            if (typeof val === 'string' && val.includes('res.cloudinary.com')) {
-                                const pid = extractPublicId(val);
-                                if (pid) publicIds.push(pid);
-                            }
-                        });
-                    }
-                });
+        // 1. Delete all assets from Cloudinary in the hackathon's specific folder
+        try {
+            const folderPath = `hackathons/${hackathonId}`;
+            
+            // Delete all resources in the folder
+            await cloudinary.api.delete_resources_by_prefix(`${folderPath}/`);
+            
+            // Delete subfolders (Cloudinary folders must be empty to be deleted)
+            // Note: We ignore errors here in case subfolders don't exist
+            const subfolders = ['banners', 'organisers', 'submissions'];
+            for (const sub of subfolders) {
+                try {
+                    await cloudinary.api.delete_folder(`${folderPath}/${sub}`);
+                } catch (e) {
+                    // Ignore folder not found errors
+                }
             }
-        });
-
-        if (publicIds.length > 0) {
+            
+            // Delete the main folder
             try {
-                // Delete assets from Cloudinary
-                await cloudinary.api.delete_resources(publicIds);
-            } catch (cloudErr) {
-                console.error('Cloudinary asset cleanup failed:', cloudErr);
-                // We continue even if Cloudinary fails, to ensure DB is cleaned
+                await cloudinary.api.delete_folder(folderPath);
+            } catch (e) {
+                // Ignore folder not found errors
             }
+        } catch (cloudErr) {
+            console.error('Cloudinary folder cleanup failed:', cloudErr);
+            // We continue even if Cloudinary fails, to ensure DB is cleaned
         }
 
         // 2. Delete registrations from MongoDB
-        await Registration.deleteMany({ hackathonId: req.params.id });
+        const Registration = require('../models/Registration');
+        await Registration.deleteMany({ hackathonId });
 
-        // 3. Delete hackathon from MongoDB
-        await Hackathon.findOneAndDelete({ id: req.params.id });
+        // 3. Delete invitations from MongoDB
+        const Invitation = require('../models/Invitation');
+        await Invitation.deleteMany({ hackathonId });
+
+        // 4. Delete hackathon from MongoDB
+        await Hackathon.findOneAndDelete({ id: hackathonId });
 
         res.json({ message: 'Hackathon and all associated data (including cloud assets) deleted successfully' });
     } catch (error) {
@@ -188,13 +188,15 @@ const deleteHackathon = async (req, res) => {
 // @route   POST /api/hackathons/upload-banner
 const uploadBanner = async (req, res) => {
     try {
-        const { image } = req.body;
+        const { image, hackathonId } = req.body;
         if (!image) {
             return res.status(400).json({ message: 'No image provided' });
         }
 
+        const folder = hackathonId ? `hackathons/${hackathonId}/banners` : 'hackathon_banners';
+
         const uploadResponse = await cloudinary.uploader.upload(image, {
-            folder: 'hackathon_banners',
+            folder: folder,
         });
 
         res.status(200).json({ url: uploadResponse.secure_url });

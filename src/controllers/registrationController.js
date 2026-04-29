@@ -1,5 +1,25 @@
 const Registration = require('../models/Registration');
 const User = require('../models/User');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary for asset cleanup
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const extractPublicId = (url) => {
+    try {
+        // Handle both /image/upload and /raw/upload
+        // Format: .../upload/v1234567890/folder/public_id.ext
+        const regex = /\/upload\/v\d+\/(.+)\.\w+$/;
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    } catch (e) {
+        return null;
+    }
+};
 
 // @desc    Get all registrations for a specific hackathon
 // @route   GET /api/registrations/:hackathonId
@@ -55,6 +75,55 @@ const getUserRegistration = async (req, res) => {
         } else {
             res.json(null);
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Increment and check upload limit for a field
+// @route   POST /api/registrations/upload-count
+const checkAndIncrementUpload = async (req, res) => {
+    try {
+        const { userId, hackathonId, phaseId, fieldId } = req.body;
+        const registration = await Registration.findOne({ userId, hackathonId });
+        if (!registration) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        const countKey = `${phaseId}_${fieldId}`;
+        const currentCount = registration.uploadCounts ? (registration.uploadCounts.get(countKey) || 0) : 0;
+
+        if (currentCount >= 3) {
+            return res.status(403).json({ 
+                message: 'Limit reached. Only 3 uploads permitted per artifact.',
+                count: currentCount 
+            });
+        }
+
+        if (!registration.uploadCounts) registration.uploadCounts = new Map();
+        registration.uploadCounts.set(countKey, currentCount + 1);
+        await registration.save();
+
+        // Sync with other team members
+        const formationResp = registration.responses.get('phase_2_team_formation');
+        if (formationResp && formationResp.teamName) {
+            const teamName = formationResp.teamName;
+            const otherMembers = await Registration.find({
+                hackathonId,
+                userId: { $ne: userId },
+                [`responses.phase_2_team_formation.teamName`]: teamName
+            });
+
+            if (otherMembers.length > 0) {
+                await Promise.all(otherMembers.map(async (memberReg) => {
+                    if (!memberReg.uploadCounts) memberReg.uploadCounts = new Map();
+                    memberReg.uploadCounts.set(countKey, currentCount + 1);
+                    return memberReg.save();
+                }));
+            }
+        }
+
+        res.json({ count: currentCount + 1, success: true });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -218,13 +287,60 @@ const deleteRegistration = async (req, res) => {
             return res.status(403).json({ message: 'Only the creator can delete registrations' });
         }
 
-        // NUCLEAR DELETION: Removing the registration document will automatically
-        // purge all phase telemetry (Registration, Team Formation, Submissions)
-        // stored within the 'responses' Map for this participant.
+        // 1. Check if this squadron should be dissolved (last member)
+        let teamName = '';
+        const formationResp = registration.responses?.get('phase_2_team_formation');
+        if (formationResp) teamName = formationResp.teamName;
+
+        let shouldCleanupAssets = true;
+        if (teamName) {
+            const otherMembers = await Registration.find({
+                hackathonId: registration.hackathonId,
+                userId: { $ne: registration.userId },
+                [`responses.phase_2_team_formation.teamName`]: teamName
+            });
+            if (otherMembers.length > 0) {
+                shouldCleanupAssets = false; // Team still has members, keep assets
+            }
+        }
+
+        // 2. Perform Artifact Purge if Dissolved
+        if (shouldCleanupAssets && registration.responses) {
+            const urlsToDelete = [];
+            for (const [phaseId, data] of registration.responses) {
+                if (data && typeof data === 'object') {
+                    for (const key in data) {
+                        const val = data[key];
+                        if (typeof val === 'string' && val.includes('cloudinary.com')) {
+                            urlsToDelete.push(val);
+                        }
+                    }
+                }
+            }
+
+            if (urlsToDelete.length > 0) {
+                console.log(`[Dissolve] Purging ${urlsToDelete.length} artifacts from Cloudinary for team: ${teamName || 'Solo'}`);
+                await Promise.all(urlsToDelete.map(async (url) => {
+                    const publicId = extractPublicId(url);
+                    if (publicId) {
+                        const resourceType = url.includes('/raw/upload') ? 'raw' : 'image';
+                        try {
+                            await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+                        } catch (err) {
+                            console.error(`[Purge_Error] Failed to delete ${publicId}:`, err.message);
+                        }
+                    }
+                }));
+            }
+        }
+
+        // 3. Purge the manifest entry
         await Registration.findByIdAndDelete(req.params.id);
 
         res.json({ 
-            message: 'Participant purged. All associated phase telemetry and submissions have been erased from the manifest.' 
+            message: shouldCleanupAssets 
+                ? 'Squadron dissolved. Participant and all Cloudinary artifacts have been purged from the manifest.'
+                : 'Participant removed. Team artifacts preserved for remaining squad members.'
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -237,5 +353,6 @@ module.exports = {
     getRegistrationById,
     registerOrUpdate,
     updateRegistrationStatus,
-    deleteRegistration
+    deleteRegistration,
+    checkAndIncrementUpload
 };

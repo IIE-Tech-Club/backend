@@ -16,6 +16,11 @@ const registrationSchema = new mongoose.Schema({
         of: mongoose.Schema.Types.Mixed,
         default: {}
     },
+    uploadCounts: {
+        type: Map,
+        of: Number,
+        default: {}
+    },
     status: {
         type: String,
         enum: ['Pending', 'Approved', 'Rejected', 'Done'],
