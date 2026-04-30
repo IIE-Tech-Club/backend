@@ -347,6 +347,38 @@ const deleteRegistration = async (req, res) => {
     }
 };
 
+// @desc    Evaluate a registration (for judges)
+// @route   POST /api/registrations/evaluate/:id
+const evaluateRegistration = async (req, res) => {
+    try {
+        const { judgeEmail, scores, feedback } = req.body;
+        const registration = await Registration.findById(req.params.id);
+        
+        if (!registration) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        if (!registration.evaluations) {
+            registration.evaluations = [];
+        }
+
+        // Check if judge already evaluated
+        const existingIndex = registration.evaluations.findIndex(e => e.judgeEmail === judgeEmail);
+        if (existingIndex > -1) {
+            registration.evaluations[existingIndex].scores = scores;
+            registration.evaluations[existingIndex].feedback = feedback;
+            registration.evaluations[existingIndex].evaluatedAt = Date.now();
+        } else {
+            registration.evaluations.push({ judgeEmail, scores, feedback });
+        }
+
+        await registration.save();
+        res.json(registration);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getRegistrationsByHackathon,
     getUserRegistration,
@@ -354,5 +386,6 @@ module.exports = {
     registerOrUpdate,
     updateRegistrationStatus,
     deleteRegistration,
-    checkAndIncrementUpload
+    checkAndIncrementUpload,
+    evaluateRegistration
 };

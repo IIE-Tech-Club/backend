@@ -68,6 +68,16 @@ const hackathonSchema = new mongoose.Schema({
             options: [String]
         }]
     }],
+    judges: [{
+        email: { type: String, required: true },
+        status: { type: String, enum: ['invited', 'accepted'], default: 'invited' },
+        name: { type: String },
+        avatar: { type: String }
+    }],
+    judgingParameters: [{
+        name: { type: String, required: true },
+        maxScore: { type: Number, default: 10 }
+    }],
     creatorId: {
         type: String,
         required: true

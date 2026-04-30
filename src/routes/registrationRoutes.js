@@ -7,10 +7,12 @@ const {
     registerOrUpdate, 
     updateRegistrationStatus,
     deleteRegistration,
-    checkAndIncrementUpload
+    checkAndIncrementUpload,
+    evaluateRegistration
 } = require('../controllers/registrationController');
 
 router.post('/upload-count', checkAndIncrementUpload);
+router.post('/evaluate/:id', evaluateRegistration);
 
 router.get('/detail/:id', getRegistrationById);
 router.get('/:hackathonId', getRegistrationsByHackathon);

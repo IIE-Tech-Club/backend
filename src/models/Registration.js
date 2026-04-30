@@ -29,7 +29,17 @@ const registrationSchema = new mongoose.Schema({
     registrationDate: {
         type: Date,
         default: Date.now
-    }
+    },
+    evaluations: [{
+        judgeEmail: { type: String, required: true },
+        scores: {
+            type: Map,
+            of: Number,
+            default: {}
+        },
+        feedback: { type: String },
+        evaluatedAt: { type: Date, default: Date.now }
+    }]
 });
 
 module.exports = mongoose.model('Registration', registrationSchema);

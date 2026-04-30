@@ -105,6 +105,8 @@ const updateHackathon = async (req, res) => {
         if (req.body.hasOwnProperty('organizers')) updateData.organizers = req.body.organizers;
         if (req.body.hasOwnProperty('contactEmail')) updateData.contactEmail = req.body.contactEmail;
         if (req.body.hasOwnProperty('banner')) updateData.banner = req.body.banner;
+        if (req.body.hasOwnProperty('judges')) updateData.judges = req.body.judges;
+        if (req.body.hasOwnProperty('judgingParameters')) updateData.judgingParameters = req.body.judgingParameters;
 
         const updatedHackathon = await Hackathon.findOneAndUpdate(
             { id: req.params.id },
@@ -205,11 +207,33 @@ const uploadBanner = async (req, res) => {
     }
 };
 
+// @desc    Accept judge invitation
+// @route   POST /api/hackathons/:id/judges/accept
+const acceptJudgeInvitation = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const hackathon = await Hackathon.findOne({ id: req.params.id });
+        if (!hackathon) return res.status(404).json({ message: 'Hackathon not found' });
+
+        const judge = hackathon.judges.find(j => j.email === email);
+        if (judge) {
+            judge.status = 'accepted';
+            await hackathon.save();
+            res.json({ message: 'Invitation accepted successfully' });
+        } else {
+            res.status(404).json({ message: 'Judge invitation not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getHackathons,
     getHackathonById,
     createHackathon,
     updateHackathon,
     deleteHackathon,
-    uploadBanner
+    uploadBanner,
+    acceptJudgeInvitation
 };
