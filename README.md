@@ -1,71 +1,75 @@
-# 🚀 CodeCraft Backend
+# ⚙️ CodeCraft Backend Core
 
-The core API service for the CodeCraft Hackathon Management Platform. Built with Express.js and Mongoose, providing a robust RESTful architecture for user management, hackathon orchestration, and registration workflows.
+![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?style=for-the-badge&logo=nodedotjs)
+![Express](https://img.shields.io/badge/Express-5.2-000000?style=for-the-badge&logo=express)
+![MongoDB](https://img.shields.io/badge/MongoDB-9.5-47A248?style=for-the-badge&logo=mongodb)
+![Mongoose](https://img.shields.io/badge/Mongoose-9.5-880000?style=for-the-badge&logo=mongoose)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-2.10-3448C5?style=for-the-badge&logo=cloudinary)
 
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
-![Cloudinary](https://img.shields.io/badge/Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)
+The **CodeCraft Backend Core** provides the central API services for the hackathon platform. It handles data persistence via MongoDB, asset management through Cloudinary, and orchestrates the complex logic required for hackathon phases and registrations.
 
 ---
 
-## 📂 Project Structure
+## 🛠️ Tech Stack
 
-| Path | Description |
+- **Framework**: Express 5 (Next-gen web framework)
+- **Database**: MongoDB (via Mongoose ODM)
+- **Storage**: Cloudinary (Image & Asset hosting)
+- **Middleware**: CORS, Dotenv, JSON Parser
+- **Runtime**: Node.js (CommonJS)
+
+---
+
+## 📂 Repository Structure
+
+| Path | Purpose |
 | :--- | :--- |
-| `src/server.js` | Entry point of the application. |
-| `src/config/` | Database and third-party service configurations. |
-| `src/controllers/` | Request handlers and business logic. |
-| `src/models/` | Mongoose schemas and data models. |
-| `src/routes/` | API route definitions. |
-| `src/middleware/` | Global and route-specific middlewares (Auth, Error). |
+| `src/server.js` | Entry point & Server initialization |
+| `src/routes/` | API route definitions (Hackathons, Registrations, Users) |
+| `src/models/` | Mongoose schemas for data modeling |
+| `src/controllers/` | Business logic implementation |
+| `src/config/` | Configuration for Cloudinary, MongoDB, and Firebase |
 
 ---
 
-## 🛠️ Way of Working (Logic Flow)
+## 🔄 Way of Working (Logic Flow)
 
 ```mermaid
-graph TD
-    A[Client Request] --> B[Middleware: CORS/JSON/Auth]
-    B --> C[Routes: /api/...]
-    C --> D[Controllers: Business Logic]
-    D --> E[Models: Mongoose/MongoDB]
-    E --> D
-    D --> F[Cloudinary: Asset Storage]
-    F --> D
-    D --> G[Client Response]
+graph LR
+    A[Client Request] --> B[Express Router]
+    B --> C[Auth Middleware]
+    C --> D[Controllers]
+    D --> E{Data Type}
+    E -- Document --> F[MongoDB/Mongoose]
+    E -- Asset --> G[Cloudinary]
+    F --> H[JSON Response]
+    G --> H
 ```
 
 ---
 
-## ⚡ Quick Start
+## 🚀 Getting Started
 
-1. **Install Dependencies**
+1. **Environment Config**:
+   Create a `.env` file with:
+   - `MONGODB_URI`
+   - `CLOUDINARY_URL`
+   - `FIREBASE_ADMIN_CONFIG`
+
+2. **Install Dependencies**:
 
    ```bash
    npm install
    ```
 
-2. **Environment Setup**
-
-   Create a `.env.local` file in the root directory:
-
-   ```env
-   PORT=5000
-   MONGO_URI=your_mongodb_uri
-   CLOUDINARY_URL=your_cloudinary_url
-   ```
-
-3. **Run Development Server**
+3. **Development Mode**:
 
    ```bash
    npm run dev
    ```
 
----
+4. **Production Start**:
 
-## 📡 API Endpoints
-
-- `GET /api/users`: User management.
-- `GET /api/hackathons`: Hackathon configuration and lifecycle.
-- `GET /api/registrations`: Registration and submission handling.
+   ```bash
+   npm start
+   ```
