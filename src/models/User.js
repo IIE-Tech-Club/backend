@@ -63,6 +63,12 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String
+    },
+    github: {
+        type: String
+    },
+    linkedin: {
+        type: String
     }
 });
 

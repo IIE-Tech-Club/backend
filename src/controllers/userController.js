@@ -68,7 +68,7 @@ const getUserByUid = async (req, res) => {
 // @access  Public
 const updateUserByUid = async (req, res) => {
     try {
-        const { name, gender, year, branch, collegeName, bio, phone } = req.body;
+        const { name, gender, year, branch, collegeName, bio, phone, github, linkedin } = req.body;
         
         let user = await User.findOne({ uid: req.params.uid });
         if (!user) {
@@ -82,6 +82,8 @@ const updateUserByUid = async (req, res) => {
         if (collegeName) user.collegeName = collegeName;
         if (bio) user.bio = bio;
         if (phone) user.phone = phone;
+        if (github !== undefined) user.github = github;
+        if (linkedin !== undefined) user.linkedin = linkedin;
 
         const updatedUser = await user.save();
         res.json(updatedUser);
