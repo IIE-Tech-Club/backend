@@ -28,6 +28,7 @@ The **CodeCraft Backend Core** provides the central API services for the hackath
 | `src/routes/` | API route definitions (Hackathons, Registrations, Users) |
 | `src/models/` | Mongoose schemas for data modeling |
 | `src/controllers/` | Business logic implementation |
+| `src/middleware/` | Custom middleware for Auth, Validation, etc. |
 | `src/config/` | Configuration for Cloudinary, MongoDB, and Firebase |
 
 ---
