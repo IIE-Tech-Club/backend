@@ -250,7 +250,13 @@ const updateRegistrationStatus = async (req, res) => {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const registration = await Registration.findById(req.params.id);
+        let registration = await Registration.findById(req.params.id).catch(() => null);
+        
+        // If not found by Mongo ID, try finding by Firebase UID
+        if (!registration) {
+            registration = await Registration.findOne({ userId: req.params.id });
+        }
+
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
         }
@@ -347,7 +353,7 @@ const deleteRegistration = async (req, res) => {
         }
 
         // 3. Purge the manifest entry
-        await Registration.findByIdAndDelete(req.params.id);
+        await Registration.findByIdAndDelete(registration._id);
 
         res.json({ 
             message: shouldCleanupAssets 
@@ -364,7 +370,12 @@ const deleteRegistration = async (req, res) => {
 const evaluateRegistration = async (req, res) => {
     try {
         const { judgeEmail, scores, feedback } = req.body;
-        const registration = await Registration.findById(req.params.id);
+        let registration = await Registration.findById(req.params.id).catch(() => null);
+        
+        // If not found by Mongo ID, try finding by Firebase UID
+        if (!registration) {
+            registration = await Registration.findOne({ userId: req.params.id });
+        }
         
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
