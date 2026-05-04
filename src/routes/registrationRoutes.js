@@ -8,11 +8,13 @@ const {
     updateRegistrationStatus,
     deleteRegistration,
     checkAndIncrementUpload,
-    evaluateRegistration
+    evaluateRegistration,
+    markRegistration
 } = require('../controllers/registrationController');
 
 router.post('/upload-count', checkAndIncrementUpload);
 router.post('/evaluate/:id', evaluateRegistration);
+router.patch('/:hackathonId/mark/:userId', markRegistration);
 
 router.get('/detail/:id', getRegistrationById);
 router.get('/:hackathonId', getRegistrationsByHackathon);

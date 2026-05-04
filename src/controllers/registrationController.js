@@ -48,7 +48,13 @@ const getRegistrationsByHackathon = async (req, res) => {
 // @route   GET /api/registrations/detail/:id
 const getRegistrationById = async (req, res) => {
     try {
-        const registration = await Registration.findById(req.params.id);
+        let registration = await Registration.findById(req.params.id).catch(() => null);
+        
+        // If not found by Mongo ID, try finding by Firebase UID
+        if (!registration) {
+            registration = await Registration.findOne({ userId: req.params.id });
+        }
+
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
         }
@@ -275,7 +281,13 @@ const deleteRegistration = async (req, res) => {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const registration = await Registration.findById(req.params.id);
+        let registration = await Registration.findById(req.params.id).catch(() => null);
+        
+        // If not found by Mongo ID, try finding by Firebase UID
+        if (!registration) {
+            registration = await Registration.findOne({ userId: req.params.id });
+        }
+
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
         }
@@ -379,6 +391,32 @@ const evaluateRegistration = async (req, res) => {
     }
 };
 
+// @desc    Mark attendance or food for a participant
+// @route   PATCH /api/registrations/:hackathonId/mark/:userId
+const markRegistration = async (req, res) => {
+    try {
+        const { hackathonId, userId } = req.params;
+        const { type } = req.body; // 'attendance' or 'food'
+        
+        if (!['attendance', 'food'].includes(type)) {
+            return res.status(400).json({ message: 'Invalid mark type' });
+        }
+
+        const registration = await Registration.findOne({ hackathonId, userId });
+        if (!registration) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        // Using set() for dynamic field update on the model
+        registration[type] = true;
+        await registration.save();
+
+        res.json({ success: true, message: `${type} marked successfully`, registration });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getRegistrationsByHackathon,
     getUserRegistration,
@@ -387,5 +425,6 @@ module.exports = {
     updateRegistrationStatus,
     deleteRegistration,
     checkAndIncrementUpload,
-    evaluateRegistration
+    evaluateRegistration,
+    markRegistration
 };
