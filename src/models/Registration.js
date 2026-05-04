@@ -39,7 +39,15 @@ const registrationSchema = new mongoose.Schema({
         },
         feedback: { type: String },
         evaluatedAt: { type: Date, default: Date.now }
-    }]
+    }],
+    attendance: {
+        type: Boolean,
+        default: false
+    },
+    food: {
+        type: Boolean,
+        default: false
+    }
 });
 
 module.exports = mongoose.model('Registration', registrationSchema);
