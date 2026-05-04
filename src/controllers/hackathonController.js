@@ -50,6 +50,19 @@ const createHackathon = async (req, res) => {
     try {
         const { id, title, tagline, date, startDate, endDate, prize, banner, organizers, slots, contactEmail, phases, creatorId, creatorEmail } = req.body;
         
+        // Use authenticated user data if available
+        const actualCreatorId = req.user?.uid || creatorId;
+        const actualCreatorEmail = req.user?.email || creatorEmail;
+
+        if (!actualCreatorId) {
+            return res.status(400).json({ message: 'Creator identity could not be verified.' });
+        }
+
+        const hackathonExists = await Hackathon.findOne({ id });
+        if (hackathonExists) {
+            return res.status(400).json({ message: 'Hackathon node with this ID already exists' });
+        }
+
         const hackathon = await Hackathon.create({
             id,
             title,
@@ -63,8 +76,8 @@ const createHackathon = async (req, res) => {
             slots,
             contactEmail,
             phases,
-            creatorId,
-            creatorEmail
+            creatorId: actualCreatorId,
+            creatorEmail: actualCreatorEmail
         });
 
         res.status(201).json(hackathon);
@@ -77,9 +90,12 @@ const createHackathon = async (req, res) => {
 // @route   PATCH /api/hackathons/:id
 const updateHackathon = async (req, res) => {
     try {
-        const { phases, startDate, endDate, title, tagline, date, prize, slots, creatorId } = req.body;
+        const { phases, startDate, endDate, title, tagline, date, prize, slots } = req.body;
         
-        if (!creatorId) {
+        // Use authenticated UID as primary check
+        const authenticatedUid = req.user?.uid || req.body.creatorId;
+
+        if (!authenticatedUid) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
@@ -89,7 +105,7 @@ const updateHackathon = async (req, res) => {
             return res.status(404).json({ message: 'Hackathon not found' });
         }
 
-        if (hackathon.creatorId !== creatorId) {
+        if (hackathon.creatorId !== authenticatedUid) {
             return res.status(403).json({ message: 'Only the creator can modify this hackathon' });
         }
 
@@ -123,10 +139,12 @@ const updateHackathon = async (req, res) => {
 // @desc    Delete a hackathon
 const deleteHackathon = async (req, res) => {
     try {
-        const { creatorId } = req.query;
         const hackathonId = req.params.id;
         
-        if (!creatorId) {
+        // Use authenticated UID as primary check
+        const authenticatedUid = req.user?.uid || req.query.creatorId;
+        
+        if (!authenticatedUid) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
@@ -136,7 +154,7 @@ const deleteHackathon = async (req, res) => {
             return res.status(404).json({ message: 'Hackathon not found' });
         }
 
-        if (hackathon.creatorId !== creatorId) {
+        if (hackathon.creatorId !== authenticatedUid) {
             return res.status(403).json({ message: 'Only the creator can delete this hackathon' });
         }
 

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+    _id: String, // Explicitly set to Firebase UID
     uid: {
         type: String,
         required: true,

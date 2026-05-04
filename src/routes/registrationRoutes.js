@@ -12,15 +12,17 @@ const {
     markRegistration
 } = require('../controllers/registrationController');
 
-router.post('/upload-count', checkAndIncrementUpload);
-router.post('/evaluate/:id', evaluateRegistration);
-router.patch('/:hackathonId/mark/:userId', markRegistration);
+const { protect } = require('../middleware/authMiddleware');
+
+router.post('/upload-count', protect, checkAndIncrementUpload);
+router.post('/evaluate/:id', protect, evaluateRegistration);
+router.patch('/:hackathonId/mark/:userId', protect, markRegistration);
 
 router.get('/detail/:id', getRegistrationById);
 router.get('/:hackathonId', getRegistrationsByHackathon);
 router.get('/:hackathonId/user/:userId', getUserRegistration);
-router.post('/', registerOrUpdate);
-router.patch('/:id', updateRegistrationStatus);
-router.delete('/:id', deleteRegistration);
+router.post('/', protect, registerOrUpdate);
+router.patch('/:id', protect, updateRegistrationStatus);
+router.delete('/:id', protect, deleteRegistration);
 
 module.exports = router;

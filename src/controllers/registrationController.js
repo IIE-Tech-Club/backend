@@ -244,9 +244,12 @@ const registerOrUpdate = async (req, res) => {
 // @route   PATCH /api/registrations/:id
 const updateRegistrationStatus = async (req, res) => {
     try {
-        const { status, creatorId } = req.body;
+        const { status } = req.body;
         
-        if (!creatorId) {
+        // Use authenticated UID as primary check
+        const authenticatedUid = req.user?.uid || req.body.creatorId;
+        
+        if (!authenticatedUid) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
@@ -264,7 +267,7 @@ const updateRegistrationStatus = async (req, res) => {
         const Hackathon = require('../models/Hackathon');
         const hackathon = await Hackathon.findOne({ id: registration.hackathonId });
         
-        if (!hackathon || hackathon.creatorId !== creatorId) {
+        if (!hackathon || hackathon.creatorId !== authenticatedUid) {
             return res.status(403).json({ message: 'Only the creator can modify registration status' });
         }
 
@@ -281,9 +284,10 @@ const updateRegistrationStatus = async (req, res) => {
 // @route   DELETE /api/registrations/:id
 const deleteRegistration = async (req, res) => {
     try {
-        const { creatorId } = req.query;
+        // Use authenticated UID as primary check
+        const authenticatedUid = req.user?.uid || req.query.creatorId;
         
-        if (!creatorId) {
+        if (!authenticatedUid) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
@@ -301,7 +305,7 @@ const deleteRegistration = async (req, res) => {
         const Hackathon = require('../models/Hackathon');
         const hackathon = await Hackathon.findOne({ id: registration.hackathonId });
         
-        if (!hackathon || hackathon.creatorId !== creatorId) {
+        if (!hackathon || hackathon.creatorId !== authenticatedUid) {
             return res.status(403).json({ message: 'Only the creator can delete registrations' });
         }
 

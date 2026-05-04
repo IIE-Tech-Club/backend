@@ -21,8 +21,21 @@ const syncUser = async (req, res) => {
     try {
         const { uid, name, email, photoURL } = req.body;
 
-        // Find user by email or uid
-        let user = await User.findOne({ email });
+        if (!uid) {
+            return res.status(400).json({ message: 'UID is required for synchronization.' });
+        }
+
+        // Find user by uid primarily
+        let user = await User.findOne({ uid });
+
+        // Fallback to email if uid not found (for legacy accounts or first-time sync)
+        if (!user && email) {
+            user = await User.findOne({ email });
+            if (user) {
+                // Link existing email-based user to this UID
+                user.uid = uid;
+            }
+        }
 
         if (user) {
             // Update existing user
@@ -33,8 +46,9 @@ const syncUser = async (req, res) => {
             return res.json(user);
         }
 
-        // Create new user
+        // Create new user with uid as _id
         user = await User.create({
+            _id: uid,
             uid,
             name,
             email,
