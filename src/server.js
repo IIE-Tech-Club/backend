@@ -10,6 +10,33 @@ dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 // Connect to Database
 connectDB();
 
+// Seed Admin
+const Admin = require("./models/Admin");
+const seedAdmin = async () => {
+  try {
+    const adminEmail = process.env.ADMIN_GMAIL || "admin@gmail.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "password123";
+    const adminExists = await Admin.findOne({ email: adminEmail });
+    if (!adminExists) {
+      await Admin.create({
+        email: adminEmail,
+        password: adminPassword,
+      });
+      console.log("Admin account seeded successfully");
+    } else {
+      const isMatch = await adminExists.comparePassword(adminPassword);
+      if (!isMatch) {
+        adminExists.password = adminPassword;
+        await adminExists.save();
+        console.log("Admin password updated and hashed");
+      }
+    }
+  } catch (error) {
+    console.error("Error seeding admin:", error);
+  }
+};
+seedAdmin();
+
 const app = express();
 
 // Middleware
@@ -57,6 +84,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/hackathons", require("./routes/hackathonRoutes"));
 app.use("/api/registrations", require("./routes/registrationRoutes"));
 app.use("/api/invitations", require("./routes/invitationRoutes"));
+app.use("/api/auth", require("./routes/auth"));
 
 // Error Middleware
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
