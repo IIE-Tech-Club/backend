@@ -155,26 +155,63 @@ const registerOrUpdate = async (req, res) => {
         if (data && data.teamName) {
             const teamNameNormalized = data.teamName.trim();
             if (teamNameNormalized) {
-                // First, check if the user has an accepted invitation for this team
                 const user = await User.findOne({ uid: userId });
-                let isAuthorizedMember = false;
-                
                 if (user) {
                     const Invitation = require('../models/Invitation');
-                    const invite = await Invitation.findOne({
+                    
+                    // Find all accepted invitations for this hackathon and team name
+                    const acceptedInvites = await Invitation.find({
                         hackathonId,
                         teamName: { $regex: new RegExp(`^${teamNameNormalized}$`, 'i') },
-                        inviteeEmail: user.email,
                         status: 'accepted'
                     });
-                    if (invite) {
-                        isAuthorizedMember = true;
-                    }
-                }
 
-                if (!isAuthorizedMember) {
-                    const allRegistrations = await Registration.find({ hackathonId, userId: { $ne: userId } });
-                    const isNameTaken = allRegistrations.some(reg => {
+                    // Determine team members' emails (case-insensitive matching)
+                    const teamEmails = new Set([user.email.toLowerCase()]);
+
+                    // Check if the current user is an invitee of any accepted invitation for this team
+                    const acceptedInviteAsInvitee = acceptedInvites.find(
+                        invite => invite.inviteeEmail.toLowerCase() === user.email.toLowerCase()
+                    );
+
+                    let leaderEmail = user.email.toLowerCase();
+                    if (acceptedInviteAsInvitee) {
+                        leaderEmail = acceptedInviteAsInvitee.inviterEmail.toLowerCase();
+                    }
+
+                    // Add leader email to the set of team emails
+                    teamEmails.add(leaderEmail);
+
+                    // Add all other invitees who accepted invitations from this team leader
+                    acceptedInvites.forEach(invite => {
+                        if (invite.inviterEmail.toLowerCase() === leaderEmail) {
+                            teamEmails.add(invite.inviteeEmail.toLowerCase());
+                        }
+                    });
+
+                    // Also check if the current user is the inviter in any invitations (accepted or pending)
+                    // If so, add those invitees to the team emails to exclude them
+                    const allInvitesFromUser = await Invitation.find({
+                        hackathonId,
+                        teamName: { $regex: new RegExp(`^${teamNameNormalized}$`, 'i') },
+                        inviterEmail: { $regex: new RegExp(`^${user.email}$`, 'i') }
+                    });
+                    allInvitesFromUser.forEach(invite => {
+                        teamEmails.add(invite.inviteeEmail.toLowerCase());
+                    });
+
+                    // Find corresponding UIDs of these team members case-insensitively
+                    const emailRegexes = Array.from(teamEmails).map(email => new RegExp(`^${email}$`, 'i'));
+                    const teamUsers = await User.find({ email: { $in: emailRegexes } });
+                    const teamUserIds = teamUsers.map(u => u.uid);
+
+                    // Query registrations for users who are NOT in the team
+                    const otherRegistrations = await Registration.find({
+                        hackathonId,
+                        userId: { $nin: teamUserIds }
+                    });
+
+                    const isNameTaken = otherRegistrations.some(reg => {
                         const responses = reg.responses;
                         for (const [pId, pData] of responses) {
                             if (pData && pData.teamName && pData.teamName.trim().toLowerCase() === teamNameNormalized.toLowerCase()) {
@@ -201,9 +238,15 @@ const registerOrUpdate = async (req, res) => {
         await registration.save();
 
         // TEAM SYNCHRONIZATION LOGIC
-        // If this is a team-related phase (Formation or Submission), sync with other members
-        const teamPhases = ['phase_2_team_formation', 'phase_3_submissions'];
-        if (teamPhases.includes(phase)) {
+        // Sync any phase that is at or after team_formation to all team members
+        const Hackathon = require('../models/Hackathon');
+        const hackathonDoc = await Hackathon.findOne({ id: hackathonId });
+        const hackathonPhases = hackathonDoc?.phases || [];
+        const teamFormationIdx = hackathonPhases.findIndex(p => p.id === 'phase_2_team_formation');
+        const currentPhaseIdx = hackathonPhases.findIndex(p => p.id === phase);
+
+        // Sync if the current phase is team_formation or any phase after it
+        if (teamFormationIdx >= 0 && currentPhaseIdx >= teamFormationIdx) {
             let teamName = '';
             if (phase === 'phase_2_team_formation') {
                 teamName = data.teamName;
@@ -215,7 +258,6 @@ const registerOrUpdate = async (req, res) => {
 
             if (teamName) {
                 // Find all other registrations in this hackathon with the same team name
-                // We search through the responses map in MongoDB
                 const query = {
                     hackathonId,
                     userId: { $ne: userId }, // Don't update the current user again
