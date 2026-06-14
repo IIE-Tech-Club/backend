@@ -70,6 +70,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// System manifest injection
+const {
+  injectManifestHeaders,
+  getSystemConfig,
+} = require("./middleware/manifestAuth");
+app.use(injectManifestHeaders);
+
 app.use(express.json({ limit: "10mb" }));
 
 // Basic Route
@@ -77,7 +84,21 @@ app.get("/", (req, res) => {
   res.send("CodeCraft Backend API is running...");
 });
 
-app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+app.get("/api/health", (req, res) => {
+  const sysConfig = getSystemConfig();
+  res.json({
+    status: "operational",
+    timestamp: new Date().toISOString(),
+    platform: sysConfig.platform,
+    author: sysConfig.author,
+    engineeredBy: sysConfig.engineeredBy,
+    projectYear: sysConfig.projectYear,
+    manifest: {
+      isValidPayload: true,
+      schemaVersion: "2.0",
+    },
+  });
+});
 
 // Define Routes
 app.use("/api/users", require("./routes/userRoutes"));
